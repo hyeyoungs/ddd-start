@@ -41,8 +41,71 @@
 ## 1.4 도메인 모델 패턴
 
 - 도메인 모델은 아키텍처 상의 도메인 계층을 객체지향 기법으로 구현하는 패턴을 말한다.
-- 도메인 모델에게 필요한 코드는 도메인 객체 내부에 구현하는 방식을 말한다.
-    - order.update()
+- `도메인 모델에게 필요한 코드`는 `도메인 객체 내부에 구현하는 방식`을 말한다.
+    - `order.update()`
+        
+        ```java
+        public class Order {
+        	private OrderState state;
+        	private ShippingInfo shippingINfo;
+        	
+        	public void changeShippingInfo(ShippingInfo newShippingInfo) {
+        		if (!state.isShippingChangeable()) {
+        			throw new IllegalStateException("can't change shipping in " + state);
+        		}
+        			this.shippingInfo = newShippingInfo;
+        	}
+        		...
+        }
+        
+        public enum OrderState {
+        	PAYMENT_WAITING {
+        		public booolean isShippingChangeable() {
+        			return true;
+        		}
+        	},
+        	PREPARING {
+        		public boolean isShippingChangeable() {
+        			return true;
+        		}
+        	},
+        	SHIPED, DELIVERING, DELIVERY_COMPLETED;
+        
+        	public boolean isShippingChangeable() {
+        		return false;
+        	}
+        }
+        ```
+        
+        - 주문 상태를 표현하는 OrderState는 배송지를 변경할 수 있는 검사하는 메서드 제공함
+        - 실제 배송지 정보를 변경하는 Order 클래스의 changeShippingInfo() 메서드는 orderState의 isShippingChangeable() 메서드를 이용해서 변경 가능한 경우에만 배송지를 변경함
+        
+        ```java
+        public class Order {
+        	private OrderState state;
+        	private ShippingInfo shippingINfo;
+        	
+        	public void changeShippingInfo(ShippingInfo newShippingInfo) {
+        		if (!state.isShippingChangeable()) {
+        			throw new IllegalStateException("can't change shipping in " + state);
+        		}
+        			this.shippingInfo = newShippingInfo;
+        	}
+        	
+        	private boolean isShippingChangeable() {
+        		return state == OrderState.PAYMENT_WAITING || 
+        			state == OrderState.PREPARING;
+        	}
+        		...
+        }
+        
+        public enum OrderState {
+        	PAYMENT_WAITING, PREPARING, SHIPPED, DELIVERING, DELIVERY_COPLETED;
+        }
+        ```
+        
+        - 큰 틀에서 보면 OrderState는 Order에 속한 데이터이므로 배송지 정보 변경 가능 여부를 판단하는 코드를 Order로 이동할 수 있음
+        - 배송지 변경이 가능한지를 판단할 규칙이 주문 상태와 다른 정보를 함께 사용한다면 OrderState만으로는 배송지 변경 가능 여부를 판단할 수 없으므로 Order에서 로직을 구현해야 함
 - 처음부터 완벽한 도메인 모델 설계는 매우 힘들기 때문에, 전반적인 개요를 알 수 있는 수준으로 작성하고 구현 과정에서 점진적으로 발전시켜 나가도록 한다.
 
 ## 1.5 도메인 모델 도출
@@ -54,19 +117,33 @@
 ## 1.6 엔티티와 밸류
 
 - 모델은 크게 엔티티와 밸류로 구분한다.
-  - 엔티티
-      - 엔티티의 가장 큰 특징은 식별자를 가진다는 것이다. (예시 - 주문번호)
-          - 엔티티의 식별자는 바뀌지 않고 고유하기 때문에 두 엔티티 객체의 식별자가 같으면 두 엔티티는 같다고 판단 할 수 있다.
-      - 엔티티의 식별자를 생성하는 시점은 도메인의 특징과 사용하는 기술에 따라 달라진다.
-          - 특정 규칙에 따라 생성
-          - UUID 또는 Nano ID와 같은 고유 식별자 생성기 사용
-          - 값을 직접 입력(예시 - 회원의 아이디나 이메일)
-          - 일련번호 사용(시퀀스나 DB의 자동 증가 컬럼 사용)
-  - 밸류
-      - 밸류 타입은 별도의 식별자가 없고, 객체 자체로 의미를 명확히 표현 가능하게 한다.
-          - 예시 - Address, Money 등
-      - 밸류 타입의 장점은 밸류 타입을 위한 기능을 추가할 수 있다는 점이다.
-          - 예시 - 전체 금액 구하기 : price * quantity -> price.multiply(quantity)
+- 엔티티
+    - 엔티티의 가장 큰 특징은 식별자를 가진다는 것이다. (예시 - 주문번호)
+        - 엔티티의 식별자는 바뀌지 않고 고유하기 때문에 두 엔티티 객체의 식별자가 같으면 두 엔티티는 같다고 판단 할 수 있다.
+    - 엔티티의 식별자를 생성하는 시점은 도메인의 특징과 사용하는 기술에 따라 달라진다.
+        - 특정 규칙에 따라 생성
+        - UUID 또는 Nano ID와 같은 고유 식별자 생성기 사용
+        - 값을 직접 입력(예시 - 회원의 아이디나 이메일)
+        - 일련번호 사용(시퀀스나 DB의 자동 증가 컬럼 사용)
+- 밸류
+    - 밸류 타입은 별도의 식별자가 없고, 객체 자체로 의미를 명확히 표현 가능하게 한다.
+        - 예시 - Address, Money 등
+    - 밸류 타입의 장점은 밸류 타입을 위한 기능을 추가할 수 있다는 점이다.
+        - 예시 - 전체 금액 구하기 : price * quantity → price.multiply(quantity)
+    - 밸류 객체의 데이터를 변경할 때는 기존 데이터를 변경하기보다는 변경한 데이터를 갖는 새로운 밸류 객체를 생성하는 방식을 선호한다.
+        
+        ```java
+        public class Money {
+        	private int value;
+        
+        	public Money add(Money money) {
+        		return new Money(this.value + money.value);
+        	}
+        
+        //value를 변경할 수 있는 메서드 없음
+        }
+        ```
+        
 - 객체를 불변(immutable)하게 구현하는 것은 아래와 같은 장점을 가진다.
     - 변경에 불가하여 안전한 설계가 가능함(사이드 이펙트 차단)
     - 참조 투명성과 스레드에 안전한 특징을 가짐
